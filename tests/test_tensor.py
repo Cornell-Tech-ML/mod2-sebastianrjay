@@ -29,6 +29,7 @@ def test_one_args(
     """Test one-arg functions compared to floats"""
     name, base_fn, tensor_fn = fn
     t2 = tensor_fn(t1)
+    # import pdb; pdb.set_trace()
     for ind in t2._tensor.indices():
         assert_close(t2[ind], base_fn(t1[ind]))
 
@@ -42,8 +43,11 @@ def test_two_args(
 ) -> None:
     name, base_fn, tensor_fn = fn
     t1, t2 = ts
+    # import pdb; pdb.set_trace()
     t3 = tensor_fn(t1, t2)
     for ind in t3._tensor.indices():
+        # if not is_close(t3[ind], base_fn(t1[ind], t2[ind])):
+        #     import pdb; pdb.set_trace()
         assert_close(t3[ind], base_fn(t1[ind], t2[ind]))
 
 
@@ -55,6 +59,7 @@ def test_one_derivative(
 ) -> None:
     """Test the gradient of a one-arg tensor function"""
     name, _, tensor_fn = fn
+    # import pdb; pdb.set_trace()
     grad_check(tensor_fn, t1)
 
 
@@ -65,6 +70,7 @@ def test_permute(data: DataObject, t1: Tensor) -> None:
     permutation = data.draw(permutations(range(len(t1.shape))))
 
     def permute(a: Tensor) -> Tensor:
+        # import pdb; pdb.set_trace()
         return a.permute(*permutation)
 
     grad_check(permute, t1)
@@ -76,6 +82,7 @@ def test_grad_size() -> None:
     b = tensor([[1, 1]], requires_grad=True)
 
     c = (a * b).sum()
+    # import pdb; pdb.set_trace()
 
     c.backward()
     assert c.shape == (1,)
@@ -153,6 +160,7 @@ def test_back_view(t1: Tensor) -> None:
     """Test the graident of view"""
 
     def view(a: Tensor) -> Tensor:
+        # import pdb; pdb.set_trace()
         a = a.contiguous()
         return a.view(a.size)
 
@@ -194,6 +202,7 @@ def test_reduce_forward_one_dim() -> None:
 
     # here 0 means to reduce the 0th dim, 3 -> nothing
     t_summed = t.sum(0)
+    # import pdb; pdb.set_trace()
 
     # shape (2)
     t_sum_expected = tensor([[11, 16]])
@@ -210,6 +219,7 @@ def test_reduce_forward_one_dim_2() -> None:
 
     # shape (3)
     t_sum_2_expected = tensor([[5], [10], [12]])
+    # import pdb; pdb.set_trace()
     assert t_summed_2.is_close(t_sum_2_expected).all().item()
 
 
