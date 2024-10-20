@@ -29,6 +29,7 @@ def test_one_args(
     """Test one-arg functions compared to floats"""
     name, base_fn, tensor_fn = fn
     t2 = tensor_fn(t1)
+    # import pdb; pdb.set_trace()
     for ind in t2._tensor.indices():
         assert_close(t2[ind], base_fn(t1[ind]))
 
@@ -55,6 +56,7 @@ def test_one_derivative(
 ) -> None:
     """Test the gradient of a one-arg tensor function"""
     name, _, tensor_fn = fn
+    # import pdb; pdb.set_trace()
     grad_check(tensor_fn, t1)
 
 
@@ -210,6 +212,7 @@ def test_reduce_forward_one_dim_2() -> None:
 
     # shape (3)
     t_sum_2_expected = tensor([[5], [10], [12]])
+    # import pdb; pdb.set_trace()
     assert t_summed_2.is_close(t_sum_2_expected).all().item()
 
 

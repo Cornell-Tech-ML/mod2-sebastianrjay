@@ -163,7 +163,10 @@ class TensorData:
         self.dims = len(strides)
         self.size = int(prod(shape))
         self.shape = shape
-        assert len(self._storage) == self.size
+        # assert len(self._storage) == self.size
+        if self._storage.size != self.size:
+            import pdb; pdb.set_trace()
+        assert self._storage.size == self.size
 
     def to_cuda_(self) -> None:  # pragma: no cover
         """Convert to cuda"""
@@ -247,8 +250,9 @@ class TensorData:
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
 
-        new_shape = tuple(map(lambda i: self.shape[i], order))
-        new_strides = tuple(map(lambda i: self.strides[i], order))
+        # import pdb; pdb.set_trace()
+        new_shape = tuple(map(lambda i: self.shape[int(i)], order))
+        new_strides = tuple(map(lambda i: self.strides[int(i)], order))
         return TensorData(self._storage, new_shape, new_strides)
 
     def to_string(self) -> str:

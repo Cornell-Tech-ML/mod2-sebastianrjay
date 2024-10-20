@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, Tuple, Protocol
+from typing import Any, Iterable, List, Tuple, Protocol
 
 
 # ## Task 1.1
@@ -73,27 +73,21 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
         Non-constant Variables in topological order starting from the right.
 
     """
-    result, perm_visit, temp_visit = [], set(), set()
+    order: List[Variable] = []
+    seen = set()
 
-    # NOTE: the snippet below matches the DFS topological sort algorithm
-    # shown on Wikipedia:
-    # https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
-    def visit(variable: Variable) -> None:
-        if variable.is_constant():
+    def visit(var: Variable) -> None:
+        if var.unique_id in seen or var.is_constant():
             return
-        if variable.unique_id in perm_visit:
-            return
-        if variable.unique_id in temp_visit:
-            raise ValueError("Cycle detected")
-        temp_visit.add(variable.unique_id)
-        for parent in variable.parents:
-            visit(parent)
-        temp_visit.remove(variable.unique_id)
-        perm_visit.add(variable.unique_id)
-        result.append(variable)
+        if not var.is_leaf():
+            for m in var.parents:
+                if not m.is_constant():
+                    visit(m)
+        seen.add(var.unique_id)
+        order.append(var)
 
     visit(variable)
-    return list(reversed(result))  # Reversed since array is used instead of linked list
+    return list(reversed(order))
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -110,20 +104,19 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
         No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
 
     """
-    variables = topological_sort(variable)
-    derivs = {}
-    derivs[variable.unique_id] = deriv
-    for var in variables:
-        if var.is_constant():
-            continue
-        curr_deriv = derivs.get(var.unique_id, 0)
+    queue = topological_sort(variable)
+    derivatives = {}
+    derivatives[variable.unique_id] = deriv
+    for var in queue:
+        deriv = derivatives[var.unique_id]
         if var.is_leaf():
-            var.accumulate_derivative(curr_deriv)
-            derivs[var.unique_id] = derivs.get(var.unique_id, 0) + var.derivative  # pyright: ignore
+            var.accumulate_derivative(deriv)
         else:
-            chain_rule_output = var.chain_rule(curr_deriv)
-            for scalar, d_out in chain_rule_output:
-                derivs[scalar.unique_id] = derivs.get(scalar.unique_id, 0) + d_out
+            for v, d in var.chain_rule(deriv):
+                if v.is_constant():
+                    continue
+                derivatives.setdefault(v.unique_id, 0.0)
+                derivatives[v.unique_id] += d
 
 
 @dataclass

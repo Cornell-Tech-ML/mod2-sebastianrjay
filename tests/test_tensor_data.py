@@ -3,7 +3,7 @@ from hypothesis import given
 from hypothesis.strategies import DataObject, data
 
 import minitorch
-from minitorch import TensorData
+from minitorch import Tensor, TensorData
 from minitorch.tensor_ops import SimpleBackend
 from .tensor_strategies import indices, tensor_data
 

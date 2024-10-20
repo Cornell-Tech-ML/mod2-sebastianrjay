@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -94,10 +94,18 @@ class Add(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         return grad_output, grad_output
 
+class Sub(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        return t1.f.sub_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        return grad_output, -grad_output
 
 class All(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Return 1 if all are true"""
         if dim is not None:
             return a.f.mul_reduce(a, int(dim.item()))
@@ -178,17 +186,34 @@ class Exp(Function):
 
 class Sum(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Sum forward"""
-        if dim is not None:
-            return a.f.add_reduce(a, int(dim.item()))
+        if dim is None:
+            dim_val = -1
         else:
-            return a.f.add_reduce(a, 0)
+            dim_val = int(dim.item())
+        ctx.save_for_backward(a.shape, dim_val)
+        return a.f.add_reduce(a, dim_val)
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, None]:
+    def backward(ctx: Context, grad_output: Optional[Tensor] = None) -> Tuple[Optional[Tensor], Tensor]:
         """Sum backward"""
-        return grad_output, None
+        a_shape, _ = ctx.saved_values
+        if grad_output is None:
+            grad_output = ones(a_shape, backend=SimpleBackend)
+        return grad_output, zeros(a_shape, backend=SimpleBackend)
+
+
+class GT(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        """LT forward"""
+        return a.f.gt_zip(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """LT backward"""
+        return grad_output, grad_output
 
 
 class LT(Function):
@@ -229,16 +254,19 @@ class IsClose(Function):
 
 class Permute(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dims: Tensor) -> Tensor:
+    def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
         """Permute forward"""
-        ctx.save_for_backward(dims)
-        return Tensor(a._tensor.permute(*dims.to_numpy()))
+        ctx.save_for_backward(order)
+        return minitorch.Tensor(a._tensor.permute(*order.to_numpy()), backend=a.backend)
 
-    # @staticmethod
-    # def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-    #     """Permute backward"""
-    #     (dims,) = ctx.saved_values
-    #     return grad_output.f.permute_back(grad_output, dims)
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
+        """Permute backward"""
+        (order,) = ctx.saved_values
+        idx = {int(order[i]): i for i in range(len(order.shape))}
+        inv_order = (idx[i] for i in range(len(order.shape)))
+        grad_input_t = minitorch.Tensor(grad_output._tensor.permute(*inv_order), backend=grad_output.backend)
+        return grad_input_t, 0.0
 
 
 class View(Function):
@@ -296,6 +324,25 @@ class MatMul(Function):
             grad_output.f.matrix_multiply(grad_output, transpose(t2)),
             grad_output.f.matrix_multiply(transpose(t1), grad_output),
         )
+
+
+# Helpers for Constructing tensors
+def ones(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:
+    """Produce a zero tensor of size `shape`.
+
+    Args:
+    ----
+        shape : shape of tensor
+        backend : tensor backend
+
+    Returns:
+    -------
+        new tensor
+
+    """
+    return minitorch.Tensor.make(
+        [1.0] * int(operators.prod(shape)), shape, backend=backend
+    )
 
 
 # Helpers for Constructing tensors

@@ -40,6 +40,12 @@ def neg(a: float) -> float:
     return -a
 
 
+# - gt
+def gt(a: float, b: float) -> float:
+    """Return True if a is less than b; return False otherwise"""
+    return 1.0 if a > b else 0.0
+
+
 # - lt
 def lt(a: float, b: float) -> float:
     """Return True if a is less than b; return False otherwise"""
