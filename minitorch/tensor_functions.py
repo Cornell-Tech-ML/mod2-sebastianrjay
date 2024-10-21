@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -94,10 +94,18 @@ class Add(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         return grad_output, grad_output
 
+class Sub(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        return t1.f.sub_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        return grad_output, -grad_output
 
 class All(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Return 1 if all are true"""
         if dim is not None:
             return a.f.mul_reduce(a, int(dim.item()))
@@ -106,6 +114,159 @@ class All(Function):
 
 
 # TODO: Implement for Task 2.3.
+
+class Mul(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        """Multiplication forward"""
+        ctx.save_for_backward(t1, t2)
+        return t1.f.mul_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Multiplication backward"""
+        t1, t2 = ctx.saved_values
+        return (
+            grad_output.f.mul_zip(grad_output, t2),
+            grad_output.f.mul_zip(grad_output, t1),
+        )
+
+
+class Sigmoid(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor) -> Tensor:
+        """Sigmoid forward"""
+        return a.f.sigmoid_map(a)
+
+    # @staticmethod
+    # def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+    #     """Sigmoid backward"""
+    #     return grad_output.f.sigmoid_back(grad_output)
+
+
+class ReLU(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor) -> Tensor:
+        """ReLU forward"""
+        ctx.save_for_backward(a)
+        return a.f.relu_map(a)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """ReLU backward"""
+        (a,) = ctx.saved_values
+        return grad_output.f.relu_back_zip(a, grad_output)
+
+
+class Log(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor) -> Tensor:
+        """Log forward"""
+        ctx.save_for_backward(a)
+        return a.f.log_map(a)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Log backward"""
+        (a,) = ctx.saved_values
+        return grad_output.f.log_back_zip(a, grad_output)
+
+
+class Exp(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor) -> Tensor:
+        """Exp forward"""
+        return a.f.exp_map(a)
+
+    # @staticmethod
+    # def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+    #     """Exp backward"""
+    #     return grad_output.f.exp_back(grad_output)
+
+
+class Sum(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
+        """Sum forward"""
+        if dim is None:
+            dim_val = -1
+        else:
+            dim_val = int(dim.item())
+        ctx.save_for_backward(a.shape, dim_val)
+        return a.f.add_reduce(a, dim_val)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Optional[Tensor] = None) -> Tuple[Optional[Tensor], Tensor]:
+        """Sum backward"""
+        a_shape, _ = ctx.saved_values
+        if grad_output is None:
+            grad_output = ones(a_shape, backend=SimpleBackend)
+        return grad_output, zeros(a_shape, backend=SimpleBackend)
+
+
+class GT(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        """LT forward"""
+        return a.f.gt_zip(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """LT backward"""
+        return grad_output, grad_output
+
+
+class LT(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        """LT forward"""
+        return a.f.lt_zip(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """LT backward"""
+        return grad_output, grad_output
+
+
+class EQ(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        """EQ forward"""
+        return a.f.eq_zip(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """EQ backward"""
+        return grad_output, grad_output
+
+
+class IsClose(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        """IsClose forward"""
+        return a.f.is_close_zip(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """IsClose backward"""
+        return grad_output, grad_output
+
+
+class Permute(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
+        """Permute forward"""
+        ctx.save_for_backward(order)
+        return minitorch.Tensor(a._tensor.permute(*order.to_numpy()), backend=a.backend)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
+        """Permute backward"""
+        (order,) = ctx.saved_values
+        idx = {int(order[i]): i for i in range(len(order.shape))}
+        inv_order = (idx[i] for i in range(len(order.shape)))
+        grad_input_t = minitorch.Tensor(grad_output._tensor.permute(*inv_order), backend=grad_output.backend)
+        return grad_input_t, 0.0
 
 
 class View(Function):
@@ -163,6 +324,25 @@ class MatMul(Function):
             grad_output.f.matrix_multiply(grad_output, transpose(t2)),
             grad_output.f.matrix_multiply(transpose(t1), grad_output),
         )
+
+
+# Helpers for Constructing tensors
+def ones(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:
+    """Produce a zero tensor of size `shape`.
+
+    Args:
+    ----
+        shape : shape of tensor
+        backend : tensor backend
+
+    Returns:
+    -------
+        new tensor
+
+    """
+    return minitorch.Tensor.make(
+        [1.0] * int(operators.prod(shape)), shape, backend=backend
+    )
 
 
 # Helpers for Constructing tensors

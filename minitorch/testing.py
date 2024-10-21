@@ -16,6 +16,7 @@ class MathTest(Generic[A]):
     @staticmethod
     def addConstant(a: A) -> A:
         "Add contant to the argument"
+        # import pdb; pdb.set_trace()
         return 5 + a
 
     @staticmethod

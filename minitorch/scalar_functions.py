@@ -38,6 +38,7 @@ class ScalarFunction:
 
     @classmethod
     def apply(cls, *vals: ScalarLike) -> Scalar:
+        """Apply the function to a set of variables, returning the output as a new Scalar instance."""
         raw_vals = []
         scalars = []
         for v in vals:
@@ -66,11 +67,29 @@ class Add(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float, b: float) -> float:
-        return a + b
+        """Forward pass for addition"""
+        ctx.save_for_backward(a, b)
+        return operators.add(a, b)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+        """Backward pass for addition"""
         return d_output, d_output
+
+
+class Sub(ScalarFunction):
+    """Subtraction function $f(x, y) = x - y$"""
+
+    @staticmethod
+    def forward(ctx: Context, a: float, b: float) -> float:
+        """Forward pass for subtraction"""
+        ctx.save_for_backward(a, b)
+        return operators.sub(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+        """Backward pass for subtraction"""
+        return d_output, -d_output
 
 
 class Log(ScalarFunction):
@@ -78,11 +97,13 @@ class Log(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
+        """Forward pass for log"""
         ctx.save_for_backward(a)
         return operators.log(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass for log"""
         (a,) = ctx.saved_values
         return operators.log_back(a, d_output)
 
@@ -90,3 +111,129 @@ class Log(ScalarFunction):
 # To implement.
 
 
+# TODO: Implement for Task 1.2.
+
+
+class EQ(ScalarFunction):
+    """Equality check function $f(x, y) = 1.0 if x == y, 0.0 o.w."""
+
+    @staticmethod
+    def forward(ctx: Context, x: float, y: float) -> float:
+        """Forward pass for equality check"""
+        ctx.save_for_backward(x, y)
+        return operators.eq(x, y)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass for equality check"""
+        return 0.0
+
+
+class LT(ScalarFunction):
+    """Less than check function $f(x, y) = 1.0 if x < y, 0.0 o.w."""
+
+    @staticmethod
+    def forward(ctx: Context, x: float, y: float) -> float:
+        """Forward pass for less than check"""
+        ctx.save_for_backward(x, y)
+        return operators.lt(x, y)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass for less than check"""
+        return 0.0
+
+
+class Exp(ScalarFunction):
+    """Calculates e to the power of x, i.e. the natural exponential function."""
+
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        """Forward pass of e to the power of x"""
+        ctx.save_for_backward(a)
+        return operators.exp(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass of e to the power of x"""
+        (a,) = ctx.saved_values
+        return d_output * operators.exp(a)
+
+
+class Inv(ScalarFunction):
+    """Implement the inverse function."""
+
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        """Forward pass of the inverse function"""
+        ctx.save_for_backward(a)
+        return operators.inv(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass of the inverse function"""
+        (a,) = ctx.saved_values
+        return operators.inv_back(a, d_output)
+
+
+class Mul(ScalarFunction):
+    """Multiplication function $f(x, y) = x * y$"""
+
+    @staticmethod
+    def forward(ctx: Context, a: float, b: float) -> float:
+        """Forward pass of the multiplication function"""
+        ctx.save_for_backward(a, b)
+        return operators.mul(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+        """Backward pass of the multiplication function"""
+        (a, b) = ctx.saved_values
+        return d_output * b, d_output * a
+
+
+class Neg(ScalarFunction):
+    """Return -1 times a"""
+
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        """Forward pass of the negation function"""
+        ctx.save_for_backward(a)
+        return operators.neg(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass of the negation function"""
+        return -d_output
+
+
+class ReLU(ScalarFunction):
+    """Implements the relu function"""
+
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        """Forward pass of the ReLU function"""
+        ctx.save_for_backward(a)
+        return operators.relu(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass of the ReLU"""
+        (a,) = ctx.saved_values
+        return operators.relu_back(a, d_output)
+
+
+class Sigmoid(ScalarFunction):
+    """Implement the sigmoid function"""
+
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        """Forward pass of the sigmoid function"""
+        ctx.save_for_backward(a)
+        return operators.sigmoid(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        """Backward pass of the sigmoid function"""
+        (a,) = ctx.saved_values
+        return operators.sigmoid_back(a, d_output)
