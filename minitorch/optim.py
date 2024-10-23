@@ -10,11 +10,12 @@ class Optimizer:
 
 
 class SGD(Optimizer):
-    def __init__(self, parameters: Sequence[Parameter], lr: float = 1.0):
+    def __init__(self, parameters: Sequence[Parameter], lr: float = 0.1):
         super().__init__(parameters)
         self.lr = lr
 
     def zero_grad(self) -> None:
+        """zero_grad method for SGD"""
         for p in self.parameters:
             if p.value is None:
                 continue
@@ -26,6 +27,7 @@ class SGD(Optimizer):
                     p.value.grad = None
 
     def step(self) -> None:
+        """Step method for SGD"""
         for p in self.parameters:
             if p.value is None:
                 continue
