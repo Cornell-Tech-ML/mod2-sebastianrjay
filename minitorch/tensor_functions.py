@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -100,6 +100,7 @@ class Add(Function):
         """Tensor addition backward"""
         return grad_output, grad_output
 
+
 class Sub(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
@@ -109,19 +110,15 @@ class Sub(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Tensor subtraction backward"""
-        return grad_output, -grad_output
+        return grad_output, grad_output
+
 
 class All(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
         """Return 1 if all are true"""
-        if dim is not None:
-            return a.f.mul_reduce(a, int(dim.item()))
-        else:
-            return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+        return a.f.mul_reduce(a, int(dim.item()))
 
-
-# TODO: Implement for Task 2.3.
 
 class Mul(Function):
     @staticmethod
@@ -142,9 +139,9 @@ class Mul(Function):
 
 class Sigmoid(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor) -> Tensor:
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
         """Sigmoid forward"""
-        out = a.f.sigmoid_map(a)
+        out = t1.f.sigmoid_map(t1)
         ctx.save_for_backward(out)
         return out
 
@@ -202,67 +199,23 @@ class Sum(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
         """Sum forward"""
-        ctx.save_for_backward(a.shape, dim)
-        out = a.f.add_reduce(a, int(dim.item()))
-        # import pdb; pdb.set_trace()
-        return out
+        return a.f.add_reduce(a, int(dim.item()))
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """Sum backward"""
-        a_shape, _ = ctx.saved_values
-        # if grad_output is None:
-        #     grad_output = ones(a_shape, backend=SimpleBackend)
-        return grad_output, zeros(grad_output.shape)
-
-
-# class Sum(Function):
-#     @staticmethod
-#     def forward(ctx, a: Tensor, dim: Tensor) -> Tensor:
-#         ctx.save_for_backward(a.shape, dim)
-#         return a.f.add_reduce(a, int(dim.item()))
-
-#     @staticmethod
-#     def backward(ctx, grad_output: Tensor) -> Tuple[Tensor, float]:
-#         a_shape, dim = ctx.saved_values
-#         return grad_output, 0.0
-
-
-# class Sum(Function):
-#     @staticmethod
-#     def forward(ctx: Context, t1: Tensor, dim: Optional[Tensor] = None) -> Tensor:
-#         """Sum over a dimension."""
-#         ctx.save_for_backward(t1.shape, dim)
-#         dim_value = int(dim.item()) if dim else 0
-#         return t1.f.add_reduce(t1, dim_value)
-
-#     @staticmethod
-#     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-#         """Calculate the gradient for sum."""
-#         shape, dim = ctx.saved_values
-#         one = ones(shape, backend=grad_output.backend)
-#         if dim is None:
-#             # Sum over all dimensions
-#             grad_input = grad_output * one
-#         else:
-#             # Expand grad_output to match input shape
-#             grad_input = one.expand(grad_output)
-#         # Sum should have just one return gradients, but dim is considered as a tensor
-#         # So we simply return a meaning less tensor ⁠ one ⁠ here
-#         return grad_input, one  # type: ignore
+        return grad_output, 0
 
 
 class GT(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
         """GT forward"""
-        # import pdb; pdb.set_trace()
         return a.f.gt_zip(a, b)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """GT backward"""
-        # import pdb; pdb.set_trace()
         return zeros(grad_output.shape), zeros(grad_output.shape)
 
 
@@ -275,7 +228,6 @@ class LT(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """LT backward"""
-        # import pdb; pdb.set_trace()
         return zeros(grad_output.shape), zeros(grad_output.shape)
 
 
@@ -310,9 +262,9 @@ class Permute(Function):
         ctx.save_for_backward(a.shape, order)
         order_np = order.to_numpy()
         shape = tuple(map(lambda i: a.shape[int(i)], order_np))
-        out = minitorch.Tensor.make(a._tensor.permute(*order_np)._storage, shape, backend=a.backend)
-        # import pdb; pdb.set_trace()
-        return out
+        return minitorch.Tensor.make(
+            a._tensor.permute(*order_np)._storage, shape, backend=a.backend
+        )
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
@@ -379,25 +331,6 @@ class MatMul(Function):
             grad_output.f.matrix_multiply(grad_output, transpose(t2)),
             grad_output.f.matrix_multiply(transpose(t1), grad_output),
         )
-
-
-# Helpers for Constructing tensors
-def ones(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:
-    """Produce a zero tensor of size `shape`.
-
-    Args:
-    ----
-        shape : shape of tensor
-        backend : tensor backend
-
-    Returns:
-    -------
-        new tensor
-
-    """
-    return minitorch.Tensor.make(
-        [1.0] * int(operators.prod(shape)), shape, backend=backend
-    )
 
 
 # Helpers for Constructing tensors
@@ -526,9 +459,7 @@ def grad_check(f: Any, *vals: Tensor) -> None:
         x.zero_grad_()
     random.seed(10)
     out = f(*vals)
-    sum_val = out.sum()
-    _back = sum_val.backward()
-    # import pdb; pdb.set_trace()
+    out.sum().backward()
     err_msg = """
 
 Gradient check error for function %s.
@@ -542,10 +473,8 @@ but was expecting derivative %f from central difference.
 
     for i, x in enumerate(vals):
         ind = x._tensor.sample()
-        # import pdb; pdb.set_trace()
         check = grad_central_difference(f, *vals, arg=i, ind=ind)
         assert x.grad is not None
-        # import pdb; pdb.set_trace()
         np.testing.assert_allclose(
             x.grad[ind],
             check,

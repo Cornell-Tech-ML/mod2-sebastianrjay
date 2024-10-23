@@ -113,24 +113,12 @@ class Tensor:
 
     def _ensure_tensor(self, b: TensorLike) -> Tensor:
         """Turns a python number into a tensor with the same backend."""
-        # Might need to add this to fix "'NoneType' object has no attribute '_type_'" error:
-        # if b is None:
-        #     # import pdb; pdb.set_trace()
-        #     b = 1
-        # if isinstance(b, (tuple, list)):
-        #     c = Tensor.make(list(b), (len(b),), backend=self.backend)
         if isinstance(b, (int, float)):
             c = Tensor.make([b], (1,), backend=self.backend)
         else:
-            # import pdb; pdb.set_trace()
-            # if b is None:
-            #     import traceback
-            #     for line in traceback.format_stack():
-            #         print(line.strip())
-            #     import pdb; pdb.set_trace()
-            b._type_(self.backend)
+            b._type_(self.backend)  # type: ignore
             c = b
-        return c
+        return c  # type: ignore
 
     def item(self) -> float:
         """Convert a 1-element tensor to a float"""
@@ -212,6 +200,7 @@ class Tensor:
 
     def zeros(self, shape: Optional[UserShape] = None) -> Tensor:
         """Create a new tensor filled with zeros."""
+
         def zero(shape: UserShape) -> Tensor:
             return Tensor.make(
                 [0.0] * int(operators.prod(shape)), shape, backend=self.backend
@@ -307,6 +296,11 @@ class Tensor:
         return MatMul.apply(self, b)
 
     @property
+    def dims(self) -> int:
+        """Number of dimensions in the tensor"""
+        return self._tensor.dims
+
+    @property
     def shape(self) -> UserShape:
         """Returns
         shape of the tensor
@@ -331,7 +325,7 @@ class Tensor:
 
         """
         return int(operators.prod(self.shape))
-    
+
     def zero_grad_(self) -> None:
         """Zero out the gradient."""
         # self.grad = None
@@ -354,14 +348,16 @@ class Tensor:
         """Sum the tensor."""
         if dim is None:
             # return Sum.apply(self)
-            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
+            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(-1))
         return Sum.apply(self, self._ensure_tensor(dim))
 
     def view(self, *shape: int) -> Tensor:
         """View the tensor."""
         # import pdb; pdb.set_trace()
         # return View.apply(self, self._ensure_tensor(shape))
-        return View.apply(self, Tensor.make(list(shape), shape=(len(shape),), backend=self.backend))
+        return View.apply(
+            self, Tensor.make(list(shape), shape=(len(shape),), backend=self.backend)
+        )
 
     def permute(self, *axes: int) -> Tensor:
         """Permute the tensor."""
@@ -383,19 +379,19 @@ class Tensor:
 
     def __neg__(self) -> Tensor:
         return Neg.apply(self)
-    
+
     def __radd__(self, b: TensorLike) -> Tensor:
         return Add.apply(self._ensure_tensor(b), self)
 
     def __mul__(self, b: TensorLike) -> Tensor:
         return Mul.apply(self, self._ensure_tensor(b))
-    
+
     def __rmul__(self, b: TensorLike) -> Tensor:
         return Mul.apply(self._ensure_tensor(b), self)
 
     def __sub__(self, b: TensorLike) -> Tensor:
         return Sub.apply(self, self._ensure_tensor(b))
-    
+
     def __rsub__(self, b: TensorLike) -> Tensor:
         return Sub.apply(self._ensure_tensor(b), self)
 
@@ -406,7 +402,7 @@ class Tensor:
     def log(self) -> Tensor:
         """Natural logarithm function."""
         return Log.apply(self)
-    
+
     def relu(self) -> Tensor:
         """ReLU function."""
         return ReLU.apply(self)
@@ -414,7 +410,7 @@ class Tensor:
     def sigmoid(self) -> Tensor:
         """Sigmoid function."""
         return Sigmoid.apply(self)
-    
+
     def is_close(self, b: TensorLike) -> Tensor:
         """Check if tensor is close to another tensor."""
         return IsClose.apply(self, self._ensure_tensor(b))

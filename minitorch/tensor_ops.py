@@ -44,6 +44,8 @@ class TensorOps:
         """Reduce placeholder"""
         ...
 
+    ...
+
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
         """Matrix multiply"""
@@ -91,6 +93,7 @@ class TensorBackend:
         # Reduce
         self.add_reduce = ops.reduce(operators.add, 0.0)
         self.mul_reduce = ops.reduce(operators.mul, 1.0)
+        self.sub_reduce = ops.reduce(operators.sub, 0.0)
         self.matrix_multiply = ops.matrix_multiply
         self.cuda = ops.cuda
 
@@ -172,7 +175,6 @@ class SimpleOps(TensorOps):
 
         """
         f = tensor_zip(fn)
-        # import pdb; pdb.set_trace()
 
         def ret(a: "Tensor", b: "Tensor") -> "Tensor":
             if a.shape != b.shape:
@@ -206,8 +208,8 @@ class SimpleOps(TensorOps):
         ----
             fn: function from two floats-to-float to apply
             a (:class:`TensorData`): tensor to reduce over
-            start: start value for reduction
             dim (int): int of dim to reduce
+            start: (float): starting value
 
         Returns:
         -------
@@ -219,7 +221,6 @@ class SimpleOps(TensorOps):
         def ret(a: "Tensor", dim: int) -> "Tensor":
             out_shape = list(a.shape)
             out_shape[dim] = 1
-
             # Other values when not sum.
             out = a.zeros(tuple(out_shape))
             out._tensor._storage[:] = start
@@ -276,20 +277,13 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # in_flat_storage = in_storage.flatten()
-        # out[:] = np.array(map(fn, in_flat_storage)).reshape(out_shape)
-        in_index = np.zeros(len(in_shape), dtype=int)
         out_index = np.zeros(len(out_shape), dtype=int)
-        for i in range(in_storage.size):
-            to_index(i, in_shape, in_index)
+        in_index = np.zeros(len(in_shape), dtype=int)
+
+        for i in range(len(out)):
             to_index(i, out_shape, out_index)
-            # import pdb; pdb.set_trace()
-            out_pos = index_to_position(out_index, out_strides)
-            # if in_storage.shape == ():
-            #     out[out_pos] = fn(in_storage.item())
-            # else:
-            #     out[out_pos] = fn(in_storage[index_to_position(in_index, in_strides)])
-            out[out_pos] = fn(in_storage[index_to_position(in_index, in_strides)])
+            broadcast_index(out_index, out_shape, in_shape, in_index)
+            out[i] = fn(in_storage[index_to_position(in_index, in_strides)])
 
     return _map
 
@@ -335,20 +329,17 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        a_index = np.zeros(len(a_shape), dtype=int)
-        b_index = np.zeros(len(b_shape), dtype=int)
-        out_index = np.zeros(len(out_shape), dtype=int)
-        # import pdb; pdb.set_trace()
+        out_index = np.array(out_shape)
+        a_index = np.array(a_shape)
+        b_index = np.array(b_shape)
         for i in range(len(out)):
-            # to_index(i, a_shape, a_index)
-            # to_index(i, b_shape, b_index)
             to_index(i, out_shape, out_index)
             broadcast_index(out_index, out_shape, a_shape, a_index)
             broadcast_index(out_index, out_shape, b_shape, b_index)
+
             a = a_storage[index_to_position(a_index, a_strides)]
             b = b_storage[index_to_position(b_index, b_strides)]
             out[index_to_position(out_index, out_strides)] = fn(a, b)
-            # import pdb; pdb.set_trace()
 
     return _zip
 
@@ -380,19 +371,14 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # if reduce_dim == -1:
-        #     out_shape = np.array([1])
-        # out_shape[reduce_dim] = 1
-        a_index = np.zeros(a_shape.size, dtype=int)
-        out_index = np.zeros(out_shape.size, dtype=int)
-        # import pdb; pdb.set_trace()
-        for i in range(out.size):
-            to_index(i, a_shape, a_index)
-            broadcast_index(a_index, a_shape, out_shape, out_index)
+        out_index = np.zeros(len(out_shape), dtype=int)
+
+        for i in range(len(a_storage)):
+            to_index(i, a_shape, out_index)
+            a_pos = index_to_position(out_index, a_strides)
+            out_index[reduce_dim] = 0
             out_pos = index_to_position(out_index, out_strides)
-            a_pos = index_to_position(a_index, a_strides)
             out[out_pos] = fn(out[out_pos], a_storage[a_pos])
-        # import pdb; pdb.set_trace()
 
     return _reduce
 

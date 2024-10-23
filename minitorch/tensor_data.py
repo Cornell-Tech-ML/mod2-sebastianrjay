@@ -115,13 +115,15 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
     # Pad the shapes with 1s.
     diff = len(shape2) - len(shape1)
-    shape1 = (1,) * diff + shape1
+    shape1 = (1,) * diff + shape1  # type: ignore
 
     # Check that the shapes are compatible.
     # for i in range(len(shape2)):
     #     if shape1[i] != 1 and shape2[i] != 1 and shape1[i] != shape2[i]:
     #         raise IndexingError(f"Shapes {shape1} and {shape2} are not broadcastable.")
-    if any(map(lambda x: x[0] != 1 and x[1] != 1 and x[0] != x[1], zip(shape1, shape2))):
+    if any(
+        map(lambda x: x[0] != 1 and x[1] != 1 and x[0] != x[1], zip(shape1, shape2))
+    ):
         # Validate that the shapes are compatible.
         raise IndexingError(f"Shapes {shape1} and {shape2} are not broadcastable.")
 
