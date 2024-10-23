@@ -272,8 +272,8 @@ class Permute(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """Permute backward"""
         (a_shape, order) = ctx.saved_values
-        idx = {int(order[i]): i for i in range(len(a_shape))}
-        inv_order = tuple(idx[i] for i in range(len(a_shape)))
+        idx = dict(map(lambda i: (int(order[i]), i), range(len(a_shape))))
+        inv_order = tuple(map(lambda i: idx[i], range(len(a_shape))))
         return grad_output.permute(*inv_order), 0.0
 
 
@@ -283,7 +283,7 @@ class View(Function):
         """Tensor view forward"""
         ctx.save_for_backward(a.shape)
         assert a._tensor.is_contiguous(), "Must be contiguous to view"
-        shape2 = [int(shape[i]) for i in range(shape.size)]
+        shape2 = list(map(lambda i: int(shape[i]), range(shape.size)))
         return minitorch.Tensor.make(
             a._tensor._storage, tuple(shape2), backend=a.backend
         )
