@@ -12,6 +12,7 @@ from .tensor_data import (
     shape_broadcast,
     to_index,
 )
+from . import tensor_functions
 
 if TYPE_CHECKING:
     from .tensor import Tensor
@@ -233,7 +234,7 @@ class SimpleOps(TensorOps):
     @staticmethod
     def matrix_multiply(a: "Tensor", b: "Tensor") -> "Tensor":
         """Matrix multiplication"""
-        raise NotImplementedError("Not implemented in this assignment")
+        return tensor_functions.MatMul.apply(a, b)
 
     is_cuda = False
 

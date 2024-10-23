@@ -45,7 +45,9 @@ class Function:
         for v in vals:
             if v.requires_grad():
                 need_grad = True
-            raw_vals.append(v.detach())
+                raw_vals.append(v)
+            else:
+                raw_vals.append(v.detach())
 
         # Create the context.
         ctx = Context(not need_grad)

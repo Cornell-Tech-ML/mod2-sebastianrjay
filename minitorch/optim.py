@@ -10,7 +10,7 @@ class Optimizer:
 
 
 class SGD(Optimizer):
-    def __init__(self, parameters: Sequence[Parameter], lr: float = 1.0):
+    def __init__(self, parameters: Sequence[Parameter], lr: float = 0.1):
         super().__init__(parameters)
         self.lr = lr
 

@@ -3,15 +3,47 @@ Be sure you have minitorch installed in you Virtual Env.
 >>> pip install -Ue .
 """
 
+import numpy as np
+import math
 import minitorch
+
 
 # Use this function to make a random parameter in
 # your module.
 def RParam(*shape):
-    r = 2 * (minitorch.rand(shape) - 0.5)
+    r = minitorch.rand(shape) - 0.5
     return minitorch.Parameter(r)
 
-# TODO: Implement for Task 2.5.
+
+class Network(minitorch.Module):
+    def __init__(self, hidden_layers):
+        super().__init__()
+        self.layer1 = Linear(2, hidden_layers)
+        self.layer2 = Linear(hidden_layers, hidden_layers)
+        self.layer3 = Linear(hidden_layers, 1)
+
+    def forward(self, x):
+        h = self.layer1.forward(x).relu()
+        h = self.layer2.forward(h).relu()
+        return self.layer3.forward(h).sigmoid()
+
+
+class Linear(minitorch.Module):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+
+        self.weight = RParam(in_size, out_size)
+        self.weight.requires_grad_(True)
+        self.bias = RParam(out_size)
+        self.bias.requires_grad_(True)
+        self.in_size = in_size
+        self.out_size = out_size
+
+    def forward(self, x):
+        output = x.view(x.shape[0], x.shape[1], 1) * self.weight.value
+        output = output.sum(1) + self.bias.value
+        return output.view(x.shape[0], self.out_size)
+
 
 def default_log_fn(epoch, total_loss, correct, losses):
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
@@ -35,10 +67,12 @@ class TensorTrain:
         optim = minitorch.SGD(self.model.parameters(), learning_rate)
 
         X = minitorch.tensor(data.X)
+
         y = minitorch.tensor(data.y)
 
         losses = []
         for epoch in range(1, self.max_epochs + 1):
+            # self.learning_rate *= math.sqrt(epoch)
             total_loss = 0.0
             correct = 0
             optim.zero_grad()
@@ -63,6 +97,7 @@ class TensorTrain:
 
 
 if __name__ == "__main__":
+    np.random.seed(0)
     PTS = 50
     HIDDEN = 2
     RATE = 0.5

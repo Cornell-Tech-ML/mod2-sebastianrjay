@@ -312,13 +312,6 @@ class Tensor:
     # TODO: Implement for Task 2.3.
 
     @property
-    def derivative(self) -> Optional[Tensor]:
-        """Derivative of the tensor."""
-        if self.grad is None:
-            return None
-        return self._ensure_tensor(self.grad)
-
-    @property
     def size(self) -> int:
         """Returns
         size of the tensor

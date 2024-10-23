@@ -150,6 +150,18 @@ class Parameter:
             if self.name:
                 self.value.name = self.name
 
+    def requires_grad_(self, x: bool) -> None:
+        """Set the requires_grad flag of the value."""
+        self.value.requires_grad_(x)
+
+    def detach(self) -> "Parameter":
+        """Detach the value from the computation graph."""
+        return Parameter(self.value.detach())
+
+    def requires_grad(self) -> bool:
+        """Get the requires_grad flag of the value."""
+        return self.value.requires_grad()
+
     def __repr__(self) -> str:
         return repr(self.value)
 

@@ -140,8 +140,6 @@ def inv_back(a: float, b: float) -> float:
 # - relu_back
 def relu_back(a: float, b: float) -> float:
     """Return b times the derivative with respect to a of relu(a)"""
-    if a == 0:
-        return 0.5
     if a < 0:
         return 0.0
     return b
